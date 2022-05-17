@@ -54,7 +54,7 @@ public class RNPushNotificationActions extends BroadcastReceiver {
         }
       }
 
-      boolean invokeApp = bundle.getBoolean("invokeApp", true);
+      boolean invokeApp = bundle.getBoolean("invokeApp", false);
 
       // Notify the action.
       if(invokeApp) {

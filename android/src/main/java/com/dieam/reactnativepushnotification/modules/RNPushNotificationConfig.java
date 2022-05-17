@@ -13,6 +13,15 @@ class RNPushNotificationConfig {
     private static final String KEY_NOTIFICATION_FOREGROUND = "com.dieam.reactnativepushnotification.notification_foreground";
     private static final String KEY_NOTIFICATION_COLOR = "com.dieam.reactnativepushnotification.notification_color";
 
+    private static String FILE_UPLOAD_CHANNEL = "fn_channel_file_upload";
+    private static String PHOTO_UPLOAD_CHANNEL = "fn_channel_photo_upload";
+    private static String PUSH_NOTIFICATION_CHANNEL = "fn_channel_push_notification";
+    private static String AUTO_REQUEST_CHANNEL = "fn_channel_auto_request";
+    private static String CHECK_IN_CHANNEL = "fn_channel_check_in";
+    private static String PAYMENTS_CHANNEL = "fn_channel_payments";
+    private static String TRIP_LOG_CHANNEL = "fn_trip_log";
+    private static String OTHER_CHANNEL = "fn_channel_other";
+
     private static Bundle metadata;
     private Context context;
 
@@ -66,15 +75,13 @@ class RNPushNotificationConfig {
         return false;
     }
 
-    public String getNotificationDefaultChannelId() {
-        try {
-            return getStringValue(KEY_NOTIFICATION_DEFAULT_CHANNEL_ID,
-              getStringValue(KEY_NOTIFICATION_FIREBASE_DEFAULT_CHANNEL_ID, "fcm_fallback_notification_channel")
-            );
-        } catch (Exception e) {
-            Log.w(RNPushNotification.LOG_TAG, "Unable to find " + KEY_NOTIFICATION_DEFAULT_CHANNEL_ID + " in manifest. Falling back to default");
-        }
+    public String getNotificationDefaultChannelId(String category) {
+        if (category.equals("AUTO_REQUEST"))
+            return  AUTO_REQUEST_CHANNEL;
+        else if (category.equals("ON_MY_WAY") || category.equals("CHECK_IN"))
+            return CHECK_IN_CHANNEL;
+
         // Default
-        return "fcm_fallback_notification_channel";
+        return PUSH_NOTIFICATION_CHANNEL;
     }
 }

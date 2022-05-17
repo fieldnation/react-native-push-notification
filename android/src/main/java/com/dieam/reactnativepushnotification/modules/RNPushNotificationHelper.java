@@ -38,6 +38,7 @@ import com.facebook.react.bridge.WritableMap;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -234,9 +235,6 @@ public class RNPushNotificationHelper {
                     case "max":
                         priority = NotificationCompat.PRIORITY_MAX;
                         break;
-                    case "high":
-                        priority = NotificationCompat.PRIORITY_HIGH;
-                        break;
                     case "low":
                         priority = NotificationCompat.PRIORITY_LOW;
                         break;
@@ -256,9 +254,6 @@ public class RNPushNotificationHelper {
 
             if (visibilityString != null) {
                 switch (visibilityString.toLowerCase()) {
-                    case "private":
-                        visibility = NotificationCompat.VISIBILITY_PRIVATE;
-                        break;
                     case "public":
                         visibility = NotificationCompat.VISIBILITY_PUBLIC;
                         break;
@@ -269,11 +264,14 @@ public class RNPushNotificationHelper {
                         visibility = NotificationCompat.VISIBILITY_PRIVATE;
                 }
             }
-            
-            String channel_id = bundle.getString("channelId");
 
-            if(channel_id == null) {
-                channel_id = this.config.getNotificationDefaultChannelId();
+            String channel_id = bundle.getString("channelId");
+            String category = bundle.getString("category");
+            if (category != null) {
+                channel_id = this.config.getNotificationDefaultChannelId(category);
+            }
+            if (channel_id == null) {
+                channel_id = this.config.getNotificationDefaultChannelId("");
             }
             
             NotificationCompat.Builder notification = new NotificationCompat.Builder(context, channel_id)
@@ -455,8 +453,18 @@ public class RNPushNotificationHelper {
 
             int notificationID = Integer.parseInt(notificationIdString);
 
-            PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID, intent,
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+            String actionsString = bundle.getString("actions");
+            JSONArray actionsArray = null;
+            try {
+                actionsArray = actionsString != null ? new JSONArray(actionsString) : null;
+            } catch (JSONException e) {
+                Log.e(LOG_TAG, "Exception while converting actions to JSON object.", e);
+            }
+            if (actionsArray != null && actionsArray.length() > 0 && category != null) {
+                configIntent(intent, notificationID, category, actionsArray.getJSONObject(0).toString());
+            }
+
+            PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID + 11, intent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
 
             NotificationManager notificationManager = notificationManager();
 
@@ -498,6 +506,23 @@ public class RNPushNotificationHelper {
             notification.setChannelId(channel_id);
             notification.setContentIntent(pendingIntent);
 
+            if (actionsArray != null && actionsArray.length() > 1 && category != null) {
+                JSONObject secAction = actionsArray.getJSONObject(1);
+                String actionTitle = secAction.getString("actionTitle");
+                if (actionTitle != null) {
+                    Intent secIntent = new Intent(context, intentClass);
+                    secIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    configIntent(secIntent, notificationID, category, secAction.toString());
+                    PendingIntent secPendingIntent = PendingIntent.getActivity(context, notificationID + 111, secIntent,
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+
+                    NotificationCompat.Action action = new NotificationCompat.Action(smallIconResId, actionTitle, secPendingIntent);
+                    notification.setAutoCancel(true);
+                    notification.addAction(action).setOngoing(true);
+                }
+            }
+
+            /*
             JSONArray actionsArray = null;
             try {
                 actionsArray = bundle.getString("actions") != null ? new JSONArray(bundle.getString("actions")) : null;
@@ -567,7 +592,7 @@ public class RNPushNotificationHelper {
                 }
 
             }
-
+*/
             // Remove the notification from the shared preferences once it has been shown
             // to avoid showing the notification again when the phone is rebooted. If the
             // notification is not removed, then every time the phone is rebooted, we will
@@ -957,5 +982,13 @@ public class RNPushNotificationHelper {
             }
         }
         return false;
+    }
+
+    private void configIntent(Intent intent, int notificationId, String category, String action) {
+        intent.setAction("ACTION_NOTIFICATION_ANDROID");
+        intent.putExtra("category", category);
+        intent.putExtra("notificationId", notificationId);
+        if (action != null)
+            intent.putExtra("WorkOrderActivity.action", action);
     }
 }

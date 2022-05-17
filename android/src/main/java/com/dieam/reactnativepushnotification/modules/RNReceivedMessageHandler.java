@@ -21,6 +21,7 @@ import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.Map;
@@ -66,7 +67,7 @@ public class RNReceivedMessageHandler {
               bundle.putString("channelId", remoteNotification.getChannelId());
             }
             else {
-              bundle.putString("channelId", config.getNotificationDefaultChannelId());
+              bundle.putString("channelId", config.getNotificationDefaultChannelId(""));
             }
 
             Integer visibilty = remoteNotification.getVisibility();
@@ -126,8 +127,35 @@ public class RNReceivedMessageHandler {
 
         bundle.putParcelable("data", dataBundle);
 
-        Log.v(LOG_TAG, "onMessageReceived: " + bundle);
+        if (remoteNotification == null && notificationData != null) {
+            try {
+                String cloudMessage = notificationData.get("message").toString();
+                JSONObject jsonObject = new JSONObject(cloudMessage);
+                bundle.putString("title",  jsonObject.getString("title"));
+                bundle.putString("message",  jsonObject.getString("body"));
+                bundle.putString("smallIcon", "ic_notif_logo");
+                bundle.putString("category", jsonObject.getString("category"));
 
+                JSONArray actions = jsonObject.getJSONArray("actions");
+                if (actions != null) {
+                    bundle.putString("actions", actions.toString());
+                }
+            } catch (Exception err){
+                err.printStackTrace();
+            }
+        }
+
+        if (bundle.getString("id") == null) {
+            SecureRandom randomNumberGenerator = new SecureRandom();
+            bundle.putString("id", String.valueOf(randomNumberGenerator.nextInt()));
+        }
+        RNPushNotificationHelper pushNotificationHelper = new RNPushNotificationHelper(mFirebaseMessagingService.getApplication());
+        boolean isForeground = pushNotificationHelper.isApplicationInForeground();
+        bundle.putBoolean("foreground", isForeground);
+        bundle.putBoolean("userInteraction", false);
+        pushNotificationHelper.sendToNotificationCentre(bundle);
+
+        /*
         // We need to run this on the main thread, as the React code assumes that is true.
         // Namely, DevServerHelper constructs a Handler() without a Looper, which triggers:
         // "Can't create handler inside thread that has not called Looper.prepare()"
@@ -155,6 +183,7 @@ public class RNReceivedMessageHandler {
                 }
             }
         });
+         */
     }
 
     private void handleRemotePushNotification(ReactApplicationContext context, Bundle bundle) {

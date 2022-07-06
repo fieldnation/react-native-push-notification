@@ -21,82 +21,82 @@ import static com.dieam.reactnativepushnotification.modules.RNPushNotification.K
 public class RNPushNotificationActions extends BroadcastReceiver {
     @Override
     public void onReceive(final Context context, Intent intent) {
-      String intentActionPrefix = context.getPackageName() + ".ACTION_";
+        String intentActionPrefix = context.getPackageName() + ".ACTION_";
 
-      Log.i(LOG_TAG, "RNPushNotificationBootEventReceiver loading scheduled notifications");
+        Log.i(LOG_TAG, "RNPushNotificationBootEventReceiver loading scheduled notifications");
 
-      if (null == intent.getAction() || !intent.getAction().startsWith(intentActionPrefix)) {
-        return;
-      }
-
-      final Bundle bundle = intent.getBundleExtra("notification");
-      Bundle remoteInput = null;
-
-      if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH){
-          remoteInput = RemoteInput.getResultsFromIntent(intent);
-      }
-      if (remoteInput != null) {
-          // Add to reply_text the text written by the user in the notification
-          bundle.putCharSequence("reply_text", remoteInput.getCharSequence(KEY_TEXT_REPLY));
-      }
-      // Dismiss the notification popup.
-      NotificationManager manager = (NotificationManager) context.getSystemService(context.NOTIFICATION_SERVICE);
-      int notificationID = Integer.parseInt(bundle.getString("id"));
-
-      boolean autoCancel = bundle.getBoolean("autoCancel", true);
-
-      if(autoCancel) {
-        if (bundle.containsKey("tag")) {
-            String tag = bundle.getString("tag");
-            manager.cancel(tag, notificationID);
-        } else {
-            manager.cancel(notificationID);
+        if (null == intent.getAction() || !intent.getAction().startsWith(intentActionPrefix)) {
+            return;
         }
-      }
 
-      boolean invokeApp = bundle.getBoolean("invokeApp", false);
+        final Bundle bundle = intent.getBundleExtra("notification");
+        Bundle remoteInput = null;
 
-      // Notify the action.
-      if(invokeApp) {
-          RNPushNotificationHelper helper = new RNPushNotificationHelper((Application) context.getApplicationContext());
+        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH){
+            remoteInput = RemoteInput.getResultsFromIntent(intent);
+        }
+        if (remoteInput != null) {
+            // Add to reply_text the text written by the user in the notification
+            bundle.putCharSequence("reply_text", remoteInput.getCharSequence(KEY_TEXT_REPLY));
+        }
+        // Dismiss the notification popup.
+        NotificationManager manager = (NotificationManager) context.getSystemService(context.NOTIFICATION_SERVICE);
+        int notificationID = Integer.parseInt(bundle.getString("id"));
 
-          helper.invokeApp(bundle);
+        boolean autoCancel = bundle.getBoolean("autoCancel", true);
 
-          context.sendBroadcast(new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
-      } else {
+        if(autoCancel) {
+            if (bundle.containsKey("tag")) {
+                String tag = bundle.getString("tag");
+                manager.cancel(tag, notificationID);
+            } else {
+                manager.cancel(notificationID);
+            }
+        }
 
-        // We need to run this on the main thread, as the React code assumes that is true.
-        // Namely, DevServerHelper constructs a Handler() without a Looper, which triggers:
-        // "Can't create handler inside thread that has not called Looper.prepare()"
-        Handler handler = new Handler(Looper.getMainLooper());
-        handler.post(new Runnable() {
-            public void run() {
-                // Construct and load our normal React JS code bundle
-                final ReactInstanceManager mReactInstanceManager = ((ReactApplication) context.getApplicationContext()).getReactNativeHost().getReactInstanceManager();
-                ReactContext context = mReactInstanceManager.getCurrentReactContext();
-                // If it's constructed, send a notification
-                if (context != null) {
-                    RNPushNotificationJsDelivery mJsDelivery = new RNPushNotificationJsDelivery(context);
+        boolean invokeApp = bundle.getBoolean("invokeApp", true);
 
-                    mJsDelivery.notifyNotificationAction(bundle);
-                } else {
-                    // Otherwise wait for construction, then send the notification
-                    mReactInstanceManager.addReactInstanceEventListener(new ReactInstanceManager.ReactInstanceEventListener() {
-                        public void onReactContextInitialized(ReactContext context) {
-                            RNPushNotificationJsDelivery mJsDelivery = new RNPushNotificationJsDelivery(context);
+        // Notify the action.
+        if(invokeApp) {
+            RNPushNotificationHelper helper = new RNPushNotificationHelper((Application) context.getApplicationContext());
 
-                            mJsDelivery.notifyNotificationAction(bundle);
- 
-                            mReactInstanceManager.removeReactInstanceEventListener(this);
+            helper.invokeApp(bundle);
+
+            context.sendBroadcast(new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+        } else {
+
+            // We need to run this on the main thread, as the React code assumes that is true.
+            // Namely, DevServerHelper constructs a Handler() without a Looper, which triggers:
+            // "Can't create handler inside thread that has not called Looper.prepare()"
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                public void run() {
+                    // Construct and load our normal React JS code bundle
+                    final ReactInstanceManager mReactInstanceManager = ((ReactApplication) context.getApplicationContext()).getReactNativeHost().getReactInstanceManager();
+                    ReactContext context = mReactInstanceManager.getCurrentReactContext();
+                    // If it's constructed, send a notification
+                    if (context != null) {
+                        RNPushNotificationJsDelivery mJsDelivery = new RNPushNotificationJsDelivery(context);
+
+                        mJsDelivery.notifyNotificationAction(bundle);
+                    } else {
+                        // Otherwise wait for construction, then send the notification
+                        mReactInstanceManager.addReactInstanceEventListener(new ReactInstanceManager.ReactInstanceEventListener() {
+                            public void onReactContextInitialized(ReactContext context) {
+                                RNPushNotificationJsDelivery mJsDelivery = new RNPushNotificationJsDelivery(context);
+
+                                mJsDelivery.notifyNotificationAction(bundle);
+
+                                mReactInstanceManager.removeReactInstanceEventListener(this);
+                            }
+                        });
+                        if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {
+                            // Construct it in the background
+                            mReactInstanceManager.createReactContextInBackground();
                         }
-                    });
-                    if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {
-                        // Construct it in the background
-                        mReactInstanceManager.createReactContextInBackground();
                     }
                 }
-            }
-        });
-      }
+            });
+        }
     }
 }

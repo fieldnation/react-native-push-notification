@@ -1,5 +1,8 @@
 package com.dieam.reactnativepushnotification.modules;
 
+import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
+import static com.dieam.reactnativepushnotification.modules.RNPushNotificationAttributes.fromJson;
+
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.AlarmManager;
@@ -24,7 +27,6 @@ import android.os.Bundle;
 import android.service.notification.StatusBarNotification;
 import android.text.Spanned;
 import android.util.Log;
-import androidx.core.app.RemoteInput;
 
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
@@ -45,10 +47,6 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
-
-import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
-import static com.dieam.reactnativepushnotification.modules.RNPushNotificationAttributes.fromJson;
-import static com.dieam.reactnativepushnotification.modules.RNPushNotification.KEY_TEXT_REPLY;
 
 public class RNPushNotificationHelper {
     public static final String PREFERENCES_KEY = "rn_push_notification";
@@ -410,7 +408,8 @@ public class RNPushNotificationHelper {
             notification.setStyle(style);
 
             Intent intent = new Intent(context, intentClass);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+//            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
             bundle.putBoolean("foreground", this.isApplicationInForeground());
             bundle.putBoolean("userInteraction", true);
             intent.putExtra("notification", bundle);
@@ -460,11 +459,13 @@ public class RNPushNotificationHelper {
             } catch (JSONException e) {
                 Log.e(LOG_TAG, "Exception while converting actions to JSON object.", e);
             }
-            if (actionsArray != null && actionsArray.length() > 0 && category != null) {
-                configIntent(intent, notificationID, category, actionsArray.getJSONObject(0).toString());
-            }
+//            if (actionsArray != null && actionsArray.length() > 0 && category != null) {
+//                configIntent(intent, notificationID, category, actionsArray.getJSONObject(0).toString());
+//            }
 
-            PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID + 1, intent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : 0);
+//            PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID + 1, intent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : 0);
+            PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID, intent,
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
 
             NotificationManager notificationManager = notificationManager();
 
@@ -510,13 +511,19 @@ public class RNPushNotificationHelper {
                 JSONObject secAction = actionsArray.getJSONObject(1);
                 String actionTitle = secAction.getString("actionTitle");
                 if (actionTitle != null) {
-                    Intent secIntent = new Intent(context, intentClass);
-                    secIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                    configIntent(secIntent, notificationID, category, secAction.toString());
-                    PendingIntent secPendingIntent = PendingIntent.getActivity(context, notificationID + 2, secIntent,
-                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : 0);
+                    Intent actionIntent = new Intent(context, intentClass);
+                    intent.putExtra("notificationId", notificationID);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    // Add "action" for later identifying which button gets pressed.
+                    bundle.putString("action", actionTitle);
+                    actionIntent.putExtra("notification", bundle);
+                    actionIntent.setPackage(packageName);
 
-                    NotificationCompat.Action action = new NotificationCompat.Action(smallIconResId, actionTitle, secPendingIntent);
+                    int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT;
+
+                    PendingIntent pendingActionIntent = PendingIntent.getActivity(context, notificationID, actionIntent, flags);
+                    // Add "action" for later identifying which button gets pressed
+                    NotificationCompat.Action action = new NotificationCompat.Action(smallIconResId, actionTitle, pendingActionIntent);
                     notification.setAutoCancel(true);
                     notification.addAction(action).setOngoing(true);
                 }
@@ -984,11 +991,11 @@ public class RNPushNotificationHelper {
         return false;
     }
 
-    private void configIntent(Intent intent, int notificationId, String category, String action) {
-        intent.setAction("ACTION_NOTIFICATION_ANDROID");
-        intent.putExtra("category", category);
-        intent.putExtra("notificationId", notificationId);
-        if (action != null)
-            intent.putExtra("WorkOrderActivity.action", action);
-    }
+//    private void configIntent(Intent intent, int notificationId, String category, String action) {
+//        intent.setAction("ACTION_NOTIFICATION_ANDROID");
+//        intent.putExtra("category", category);
+//        intent.putExtra("notificationId", notificationId);
+//        if (action != null)
+//            intent.putExtra("WorkOrderActivity.action", action);
+//    }
 }

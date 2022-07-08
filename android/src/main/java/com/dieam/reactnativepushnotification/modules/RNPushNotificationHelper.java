@@ -346,9 +346,10 @@ public class RNPushNotificationHelper {
                     if (largeIconResId == 0) {
                         largeIconResId = res.getIdentifier(largeIcon, "mipmap", packageName);
                     }
-                } else if(largeIcon == null) {
-                    largeIconResId = res.getIdentifier("ic_launcher", "mipmap", packageName);
                 }
+//                else if(largeIcon == null) {
+//                    largeIconResId = res.getIdentifier("ic_launcher", "mipmap", packageName);
+//                }
 
                 // Before Lolipop there was no large icon for notifications.
                 if (largeIconResId != 0 && (largeIcon != null || Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)) {

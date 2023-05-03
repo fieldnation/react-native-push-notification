@@ -4,14 +4,19 @@ import static com.dieam.reactnativepushnotification.modules.RNPushNotification.L
 
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
+import com.facebook.react.ReactApplication;
+import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
@@ -145,7 +150,6 @@ public class RNReceivedMessageHandler {
         bundle.putBoolean("userInteraction", false);
         pushNotificationHelper.sendToNotificationCentre(bundle);
 
-        /*
         // We need to run this on the main thread, as the React code assumes that is true.
         // Namely, DevServerHelper constructs a Handler() without a Looper, which triggers:
         // "Can't create handler inside thread that has not called Looper.prepare()"
@@ -157,23 +161,28 @@ public class RNReceivedMessageHandler {
                 ReactContext context = mReactInstanceManager.getCurrentReactContext();
                 // If it's constructed, send a notificationre
                 if (context != null) {
-                    handleRemotePushNotification((ReactApplicationContext) context, bundle);
+                    // handleRemotePushNotification((ReactApplicationContext) context, bundle);
+                    RNPushNotificationJsDelivery jsDelivery = new RNPushNotificationJsDelivery(context);
+                    jsDelivery.notifyDelivered(bundle);
                 } else {
                     // Otherwise wait for construction, then send the notification
                     mReactInstanceManager.addReactInstanceEventListener(new ReactInstanceManager.ReactInstanceEventListener() {
                         public void onReactContextInitialized(ReactContext context) {
-                            handleRemotePushNotification((ReactApplicationContext) context, bundle);
+                            // handleRemotePushNotification((ReactApplicationContext) context, bundle);
+                            SharedPreferences sharedPreferences = context.getSharedPreferences(RNPushNotificationHelper.PREFERENCES_KEY, Context.MODE_PRIVATE);
+                            SharedPreferences.Editor editor = sharedPreferences.edit();
+                            editor.putString("pending_remote_notification", bundle.getString("category", ""));
+                            editor.apply();
                             mReactInstanceManager.removeReactInstanceEventListener(this);
                         }
                     });
-                    if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {
-                        // Construct it in the background
-                        mReactInstanceManager.createReactContextInBackground();
-                    }
+                    // if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {
+                    //     // Construct it in the background
+                    //     mReactInstanceManager.createReactContextInBackground();
+                    // }
                 }
             }
         });
-         */
     }
 
     private void handleRemotePushNotification(ReactApplicationContext context, Bundle bundle) {
@@ -195,7 +204,7 @@ public class RNReceivedMessageHandler {
         bundle.putBoolean("foreground", isForeground);
         bundle.putBoolean("userInteraction", false);
         jsDelivery.notifyNotification(bundle);
-
+/*
         // If contentAvailable is set to true, then send out a remote fetch event
         if (bundle.getString("contentAvailable", "false").equalsIgnoreCase("true")) {
             jsDelivery.notifyRemoteFetch(bundle);
@@ -206,6 +215,7 @@ public class RNReceivedMessageHandler {
 
             pushNotificationHelper.sendToNotificationCentre(bundle);
         }
+*/
     }
 
     private String getLocalizedString(String text, String locKey, String[] locArgs) {

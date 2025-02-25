@@ -1,7 +1,5 @@
 package com.dieam.reactnativepushnotification.modules;
 
-import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
-
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -34,8 +32,9 @@ public class RNReceivedMessageHandler {
     }
 
     public void handleReceivedMessage(RemoteMessage message) {
-        String from = message.getFrom();
         RemoteMessage.Notification remoteNotification = message.getNotification();
+        Map<String, String> notificationData = message.getData();
+
         final Bundle bundle = new Bundle();
         // Putting it from remoteNotification first so it can be overriden if message
         // data has it
@@ -58,12 +57,12 @@ public class RNReceivedMessageHandler {
                 bundle.putString("smallIcon", "ic_notification");
             }
 
-            if(remoteNotification.getChannelId() != null) {
-                bundle.putString("channelId", remoteNotification.getChannelId());
-            }
-            else {
-                bundle.putString("channelId", config.getNotificationDefaultChannelId(""));
-            }
+//            if(remoteNotification.getChannelId() != null) {
+//                bundle.putString("channelId", remoteNotification.getChannelId());
+//            }
+//            else {
+//                bundle.putString("channelId", config.getNotificationDefaultChannelId(""));
+//            }
 
             Integer visibilty = remoteNotification.getVisibility();
             String visibilityString = "private";
@@ -111,11 +110,21 @@ public class RNReceivedMessageHandler {
                 bundle.putString("bigPictureUrl", imageUrl);
                 bundle.putString("largeIconUrl", imageUrl);
             }
+
+            try {
+                String cloudMessage = notificationData.get("message").toString();
+                JSONObject jsonObject = new JSONObject(cloudMessage);
+                bundle.putString("category", jsonObject.getString("category"));
+                JSONArray actions = jsonObject.getJSONArray("actions");
+                if (actions != null) {
+                    bundle.putString("actions", actions.toString());
+                }
+            } catch (Exception err) {
+                err.printStackTrace();
+            }
         }
 
         Bundle dataBundle = new Bundle();
-        Map<String, String> notificationData = message.getData();
-
         for(Map.Entry<String, String> entry : notificationData.entrySet()) {
             dataBundle.putString(entry.getKey(), entry.getValue());
         }
